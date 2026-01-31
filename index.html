@@ -26,11 +26,12 @@ button{background:#00c853;font-weight:bold;cursor:pointer}
 .lista{font-size:14px;background:#001628;padding:10px;border-radius:8px}
 footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
 #adBtn{font-size:11px;padding:4px 8px;background:#001628;border-radius:6px}
-#adminPanel{display:none;background:#2b0000;padding:15px;margin-top:10px;border-radius:10px}
-#adminActions{display:none;background:#1a0000;padding:15px;margin-top:10px;border-radius:10px}
+#adminPanel{display:none;background:#2b0000}
+#adminActions{display:none;background:#1a0000}
 ul{padding-left:18px;text-align:left}
 </style>
 </head>
+
 <body>
 
 <header>🎟️ RIFA GANA</header>
@@ -78,13 +79,13 @@ ul{padding-left:18px;text-align:left}
 <h3>📜 Reglas y Transparencia</h3>
 <ul>
 <li>Números vendidos se bloquean automáticamente.</li>
-<li>Lista pública visible en “Mis números”.</li>
+<li>Lista pública visible.</li>
 <li>Compras validadas por administrador.</li>
 <li>Sorteo público verificable.</li>
 </ul>
 </div>
 
-<!-- SORTEO Y RECOMPENSA -->
+<!-- SORTEO -->
 <div class="box">
 <h3>🎥 Sorteo y Recompensa</h3>
 <ul>
@@ -98,9 +99,10 @@ ul{padding-left:18px;text-align:left}
 </div>
 
 <footer>
+
 <button id="adBtn" onclick="toggleAdmin()">ad</button>
 
-<!-- LOGIN ADMIN -->
+<!-- PANEL LOGIN ADMIN -->
 <div class="box" id="adminPanel">
 <h3>👑 Login Admin</h3>
 <input id="email" placeholder="Email">
@@ -109,14 +111,13 @@ ul{padding-left:18px;text-align:left}
 <p id="adminMsg"></p>
 </div>
 
-<!-- PANEL ADMIN -->
+<!-- ACCIONES ADMIN -->
 <div class="box" id="adminActions">
 <h3>👑 Panel Admin</h3>
-
 <button onclick="logoutAdmin()" style="background:#ff5252">🚪 Cerrar sesión</button>
 
 <h3>➕ Registrar compra</h3>
-<input id="aNombre" placeholder="Nombre comprador">
+<input id="aNombre" placeholder="Nombre">
 <input id="aTelefono" placeholder="Teléfono">
 <input id="aNumeros" placeholder="Ej: 10,25,300">
 <button onclick="guardarCompra()">Guardar compra</button>
@@ -126,32 +127,41 @@ ul{padding-left:18px;text-align:left}
 </footer>
 
 <script>
-// FIREBASE CONFIG
+
+// CONFIG FIREBASE
 firebase.initializeApp({
-apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
-authDomain: "rifagana-2712b.firebaseapp.com",
-projectId: "rifagana-2712b",
-storageBucket: "rifagana-2712b.firebasestorage.app",
-messagingSenderId: "701255546159",
-appId: "1:701255546159:web:3456ed6bc98234e3575dda"
+  apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
+  authDomain: "rifagana-2712b.firebaseapp.com",
+  projectId: "rifagana-2712b",
+  storageBucket: "rifagana-2712b.firebasestorage.app",
+  messagingSenderId: "701255546159",
+  appId: "1:701255546159:web:3456ed6bc98234e3575dda"
 });
 
-const db=firebase.firestore();
-const auth=firebase.auth();
+const db = firebase.firestore();
+const auth = firebase.auth();
 
 const TOTAL=15000,BLOQUE=1500,PRECIO=600,MAX=100,WA="56945006619";
 let seleccionados=[],vendidos=[],esAdmin=false;
 
-const vendidosRef=db.collection("vendidos");
-const comprasRef=db.collection("compras");
+const vendidosRef = db.collection("vendidos");
+const comprasRef = db.collection("compras");
 
-// ===================== ADMIN =====================
+// ADMIN
 function toggleAdmin(){adminPanel.style.display=adminPanel.style.display==="block"?"none":"block";}
 
 function loginAdmin(){
+  if(!email.value || !password.value){
+    adminMsg.textContent="Completa email y password";
+    return;
+  }
   auth.signInWithEmailAndPassword(email.value,password.value)
-  .then(()=>{adminMsg.textContent="Admin conectado";adminActions.style.display="block";esAdmin=true;})
-  .catch(()=>adminMsg.textContent="Error login");
+    .then(u=>{
+      adminMsg.textContent="Administrador conectado";
+      esAdmin=true;
+      adminActions.style.display="block";
+    })
+    .catch(e=>adminMsg.textContent="Error login: "+e.message);
 }
 
 function logoutAdmin(){
@@ -164,28 +174,24 @@ function logoutAdmin(){
 }
 
 auth.onAuthStateChanged(u=>{
-  if(u){
-    u.getIdTokenResult().then(t=>{
-      if(t.claims.admin){esAdmin=true;adminActions.style.display="block";}
-      else esAdmin=false;
-    });
-  }else esAdmin=false;
+  if(u) esAdmin=true;
 });
 
-// ===================== MIS NUMEROS =====================
+// MIS NUMEROS
 function toggleMis(){misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";}
 
 comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
   misNumeros.innerHTML="";
   s.forEach(d=>{
-    let c=d.data();
-    let p=document.createElement("p");
-    p.innerHTML=`🔢 ${c.numeros.join(", ")}<br>👤 ${c.nombre} - 📞 ${c.telefono}`;
+    const c=d.data();
+    if(!c.nombre || !c.telefono || !c.numeros) return;
+    const p=document.createElement("p");
+    p.innerHTML=`🔢 <b>${c.numeros.join(", ")}</b><br>👤 ${c.nombre} - 📞 ${c.telefono}`;
     misNumeros.appendChild(p);
   });
 });
 
-// ===================== VENDIDOS =====================
+// VENDIDOS
 vendidosRef.onSnapshot(s=>{
   vendidos=s.docs.map(d=>parseInt(d.id));
   document.querySelectorAll(".numero").forEach(n=>{
@@ -193,33 +199,43 @@ vendidosRef.onSnapshot(s=>{
   });
 });
 
-// ===================== GUARDAR COMPRA =====================
+// GUARDAR COMPRA ADMIN
 function guardarCompra(){
-  if(!esAdmin) return;
-  let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim()));
-  if(nums.length>MAX){alert("Máximo 100 números"); return;}
-  
+  if(!esAdmin){
+    alert("Debes estar logueado como admin");
+    return;
+  }
+  if(!aNombre.value || !aTelefono.value || !aNumeros.value){
+    alert("Completa todos los campos");
+    return;
+  }
+  let nums = aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n));
+  if(nums.length===0){
+    alert("Ingresa al menos un número válido");
+    return;
+  }
+
+  // Guardar en Firestore
   comprasRef.add({
-    nombre:aNombre.value,
-    telefono:aTelefono.value,
-    numeros:nums,
-    fecha:firebase.firestore.FieldValue.serverTimestamp()
+    nombre: aNombre.value,
+    telefono: aTelefono.value,
+    numeros: nums,
+    fecha: firebase.firestore.FieldValue.serverTimestamp()
   });
 
   nums.forEach(n=>vendidosRef.doc(n.toString()).set({fecha:Date.now()}));
 
-  aNombre.value=aTelefono.value=aNumeros.value="";
+  aNombre.value = aTelefono.value = aNumeros.value = "";
+  alert("Compra registrada y números bloqueados");
 }
 
-// ===================== NUMEROS =====================
+// NUMEROS
 const cont=document.getElementById("secciones");
-
 for(let i=1;i<=TOTAL;i+=BLOQUE){
   let fin=i+BLOQUE-1;
   let btn=document.createElement("div");
   btn.className="seccion-btn";
   btn.textContent=`Números ${i}-${fin}`;
-
   let grid=document.createElement("div");
   grid.className="numeros";
   let cargado=false;
@@ -228,56 +244,40 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
     grid.style.display=grid.style.display==="grid"?"none":"grid";
     if(cargado) return;
     cargado=true;
-
     for(let n=i;n<=fin;n++){
       let d=document.createElement("div");
       d.className="numero";
       d.textContent=n;
-
       d.onclick=()=>{
         if(vendidos.includes(n)) return;
-        if(!seleccionados.includes(n)&&seleccionados.length>=MAX) return;
-
+        if(!seleccionados.includes(n) && seleccionados.length>=MAX) return;
         d.classList.toggle("sel");
-        if(seleccionados.includes(n)){
-          seleccionados=seleccionados.filter(x=>x!==n);
-        }else seleccionados.push(n);
-
+        if(seleccionados.includes(n)) seleccionados = seleccionados.filter(x=>x!==n);
+        else seleccionados.push(n);
         listaSel.textContent=seleccionados.join(", ");
         total.textContent=seleccionados.length*PRECIO;
       };
-
       grid.appendChild(d);
     }
   };
-
   cont.appendChild(btn);
   cont.appendChild(grid);
 }
 
-// ===================== WHATSAPP =====================
+// WHATSAPP
 function enviarWA(){
-  if(!nombre.value||!telefono.value||seleccionados.length===0){
-    msg.textContent="Completa todos los datos";
+  if(!nombre.value || !telefono.value || seleccionados.length===0){
+    msg.textContent="Completa datos y selecciona números";
     return;
   }
-
-  // Validaciones front anti hack
-  if(telefono.value.length < 8){
-    msg.textContent="Teléfono inválido"; return;
-  }
-  if(seleccionados.some(n=>n<1||n>TOTAL)){
-    msg.textContent="Número inválido"; return;
-  }
-
   let t=`RIFA GANA
 Nombre: ${nombre.value}
 Teléfono: ${telefono.value}
 Números: ${seleccionados.join(", ")}
 Total: $${seleccionados.length*PRECIO}`;
-
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
+
 </script>
 </body>
   </html>
