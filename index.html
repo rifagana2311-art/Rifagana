@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rifa Gana</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#0a0f1f;color:white}
+header{background:#001628;padding:20px;text-align:center;font-size:24px;font-weight:bold}
+.container{max-width:1400px;margin:auto;padding:20px}
+.box{background:#111a3a;padding:15px;border-radius:10px;margin-bottom:20px}
+input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none}
+button{background:#00c853;font-weight:bold;cursor:pointer}
+.seccion-btn{background:#001628;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer;font-weight:bold;text-align:center}
+.numeros{display:none;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:6px;margin-top:10px}
+.numero{background:#1c2b5a;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;text-align:center}
+.numero.sel{background:#00c853;color:black}
+.numero.vendido{background:#b71c1c;cursor:not-allowed}
+.lista{font-size:14px;background:#001628;padding:10px;border-radius:8px}
+footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
+#adBtn{font-size:11px;padding:4px 8px;background:#001628;border-radius:6px}
+#adminPanel{display:none;background:#2b0000}
+#adminActions{display:none;background:#1a0000}
+</style>
+</head>
+
+<body>
+
+<header>🎟️ RIFA GANA</header>
+
+<div class="container">
+
+<div class="box">
+<h3>🏆 Premios</h3>
+<p>🥇 Viaje todo pagado Sur de Chile</p>
+<p>🥈 Viaje todo pagado Norte de Chile</p>
+<p>🥉 Premios en efectivo</p>
+<p><b>Valor número:</b> $600</p>
+</div>
+
+<div class="box">
+<h3>👤 Datos del comprador</h3>
+<input id="nombre" placeholder="Nombre completo">
+<input id="telefono" placeholder="Teléfono">
+</div>
+
+<div class="box">
+<div class="seccion-btn" onclick="toggleMis()">📋 Mis números</div>
+<div id="misNumeros" class="lista" style="display:none"></div>
+</div>
+
+<div class="box">
+<h3>🎯 Selecciona tus números</h3>
+<div id="secciones"></div>
+</div>
+
+<div class="box">
+<p><b>Seleccionados:</b> <span id="listaSel">Ninguno</span></p>
+<p><b>Total:</b> $<span id="total">0</span></p>
+<button onclick="enviarWA()">Enviar a WhatsApp</button>
+<p id="msg"></p>
+</div>
+
+<div class="box">
+<h3>📜 Reglas y Transparencia</h3>
+<ul>
+<li>Todos los números vendidos se bloquean automáticamente.</li>
+<li>Lista pública visible en “Mis números”.</li>
+<li>Admin valida cada compra.</li>
+<li>Sorteo público verificable.</li>
+</ul>
+</div>
+
+<div class="box">
+<h3>🎥 Sorteo y Recompensa</h3>
+<ul>
+<li>Sorteo según fecha indicada.</li>
+<li>Modalidad LIVE Facebook e Instagram.</li>
+<li>Primeros 10 premios con llamada en vivo.</li>
+<li>Ganadores tienen 7 días hábiles para cobrar.</li>
+</ul>
+</div>
+
+</div>
+
+<footer>
+
+<button id="adBtn" onclick="toggleAdmin()">ad</button>
+
+<div class="box" id="adminPanel">
+<h3>👑 Administrador</h3>
+<input id="email" placeholder="Email admin">
+<input id="password" type="password" placeholder="Password">
+<button onclick="loginAdmin()">Ingresar</button>
+<p id="adminMsg"></p>
+</div>
+
+<div class="box" id="adminActions">
+<h3>➕ Registrar compra</h3>
+<input id="aNombre" placeholder="Nombre comprador">
+<input id="aTelefono" placeholder="Teléfono">
+<input id="aNumeros" placeholder="Números ej: 10,25,300">
+<button onclick="guardarCompra()">Guardar compra</button>
+</div>
+
+<p>© 2026 Rifa Gana</p>
+</footer>
+
+<script>
+
+// 🔥 TU FIREBASE REAL
+firebase.initializeApp({
+apiKey:"AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
+authDomain:"rifagana-2712b.firebaseapp.com",
+projectId:"rifagana-2712b",
+storageBucket:"rifagana-2712b.firebasestorage.app",
+messagingSenderId:"701255546159",
+appId:"1:701255546159:web:3456ed6bc98234e3575dda"
+});
+
+const db=firebase.firestore();
+const auth=firebase.auth();
+
+const TOTAL=15000;
+const BLOQUE=1500;
+const PRECIO=600;
+const MAX=100;
+const WA="56945006619";
+
+let seleccionados=[];
+let vendidos=[];
+let esAdmin=false;
+
+const vendidosRef=db.collection("vendidos");
+const comprasRef=db.collection("compras");
+
+function toggleAdmin(){
+adminPanel.style.display=adminPanel.style.display==="block"?"none":"block";
+}
+
+function toggleMis(){
+misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";
+}
+
+function loginAdmin(){
+auth.signInWithEmailAndPassword(email.value,password.value)
+.then(()=>{
+esAdmin=true;
+adminMsg.textContent="Administrador conectado";
+adminActions.style.display="block";
+})
+.catch(()=>adminMsg.textContent="Error acceso");
+}
+
+vendidosRef.onSnapshot(s=>{
+vendidos=s.docs.map(d=>parseInt(d.id));
+document.querySelectorAll(".numero").forEach(n=>{
+if(vendidos.includes(parseInt(n.textContent))){
+n.classList.add("vendido");
+}
+});
+});
+
+comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
+misNumeros.innerHTML="";
+s.forEach(d=>{
+const c=d.data();
+const p=document.createElement("p");
+p.innerHTML=`🔢 <b>${c.numeros.join(", ")}</b><br>👤 ${c.nombre} - 📞 ${c.telefono}`;
+misNumeros.appendChild(p);
+});
+});
+
+function guardarCompra(){
+if(!esAdmin)return;
+
+const nums=aNumeros.value.split(",").map(n=>parseInt(n.trim()));
+
+comprasRef.add({
+nombre:aNombre.value,
+telefono:aTelefono.value,
+numeros:nums,
+fecha:firebase.firestore.FieldValue.serverTimestamp()
+});
+
+nums.forEach(n=>{
+vendidosRef.doc(n.toString()).set({fecha:Date.now()});
+});
+
+aNombre.value="";
+aTelefono.value="";
+aNumeros.value="";
+}
+
+const cont=document.getElementById("secciones");
+
+for(let i=1;i<=TOTAL;i+=BLOQUE){
+
+const fin=i+BLOQUE-1;
+
+const btn=document.createElement("div");
+btn.className="seccion-btn";
+btn.textContent=`Números ${i}-${fin}`;
+
+const grid=document.createElement("div");
+grid.className="numeros";
+
+let cargado=false;
+
+btn.onclick=()=>{
+grid.style.display=grid.style.display==="grid"?"none":"grid";
+
+if(cargado)return;
+cargado=true;
+
+for(let n=i;n<=fin;n++){
+
+const d=document.createElement("div");
+d.className="numero";
+d.textContent=n;
+
+d.onclick=()=>{
+
+if(vendidos.includes(n))return;
+
+if(!seleccionados.includes(n)&&seleccionados.length>=MAX)return;
+
+d.classList.toggle("sel");
+
+if(seleccionados.includes(n)){
+seleccionados=seleccionados.filter(x=>x!==n);
+}else{
+seleccionados.push(n);
+}
+
+listaSel.textContent=seleccionados.join(", ");
+total.textContent=seleccionados.length*PRECIO;
+
+};
+
+grid.appendChild(d);
+}
+
+};
+
+cont.appendChild(btn);
+cont.appendChild(grid);
+
+}
+
+function enviarWA(){
+
+if(!nombre.value||!telefono.value||seleccionados.length===0){
+msg.textContent="Completa datos y selecciona números";
+return;
+}
+
+const t=`RIFA GANA
+Nombre: ${nombre.value}
+Teléfono: ${telefono.value}
+Números: ${seleccionados.join(", ")}
+Total: $${seleccionados.length*PRECIO}`;
+
+window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`,"_blank");
+
+}
+
+</script>
+
+
+</body></html>
