@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rifa Gana</title>
+<title>Rifa Gana - Seguridad Total</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -150,8 +150,7 @@ function toggleAdmin(){adminPanel.style.display=adminPanel.style.display==="bloc
 
 function loginAdmin(){
   if(!email.value || !password.value){
-    adminMsg.textContent="Completa email y password";
-    return;
+    adminMsg.textContent="Completa email y password"; return;
   }
   auth.signInWithEmailAndPassword(email.value,password.value)
     .then(u=>{
@@ -173,14 +172,8 @@ function logoutAdmin(){
 }
 
 auth.onAuthStateChanged(u=>{
-  if(u){
-    esAdmin=true;
-    adminPanel.style.display="none";
-    adminActions.style.display="block";
-  } else {
-    esAdmin=false;
-    adminActions.style.display="none";
-  }
+  if(u){ esAdmin=true; adminPanel.style.display="none"; adminActions.style.display="block"; }
+  else { esAdmin=false; adminActions.style.display="none"; }
 });
 
 // MIS NUMEROS
@@ -207,23 +200,27 @@ vendidosRef.onSnapshot(s=>{
   });
 });
 
-// GUARDAR COMPRA ADMIN CON BATCH
+// GUARDAR COMPRA ADMIN CON VALIDACIÓN Y BATCH
 function guardarCompra(){
-  if(!esAdmin){
-    alert("Debes estar logueado como admin");
-    return;
-  }
+  if(!esAdmin){ alert("Debes estar logueado como admin"); return; }
   if(!aNombre.value || !aTelefono.value || !aNumeros.value){
-    alert("Completa todos los campos");
+    alert("Completa todos los campos"); return;
+  }
+
+  let nums = aNumeros.value.split(",")
+              .map(n => parseInt(n.trim()))
+              .filter(n => !isNaN(n) && n >= 1 && n <= TOTAL);
+
+  if(nums.length === 0){ alert("Ingresa al menos un número válido"); return; }
+
+  // Verificar duplicados
+  let duplicates = nums.filter(n => vendidos.includes(n));
+  if(duplicates.length > 0){
+    alert("Los siguientes números ya están vendidos: " + duplicates.join(", "));
     return;
   }
 
-  let nums = aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n));
-  if(nums.length===0){
-    alert("Ingresa al menos un número válido");
-    return;
-  }
-
+  // Batch write
   let batch = db.batch();
   nums.forEach(n=>{
     let docRef = vendidosRef.doc(n.toString());
@@ -281,8 +278,7 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
 function enviarWA(){
   let nom=nombre.value.trim(), tel=telefono.value.trim();
   if(!nom || !tel || seleccionados.length===0){
-    msg.textContent="Completa datos y selecciona números";
-    return;
+    msg.textContent="Completa datos y selecciona números"; return;
   }
   let t=`RIFA GANA
 Nombre: ${nom}
@@ -292,6 +288,5 @@ Total: $${seleccionados.length*PRECIO}`;
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
 </script>
-
 </body>
   </html>
