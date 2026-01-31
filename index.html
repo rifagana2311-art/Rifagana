@@ -26,18 +26,18 @@ button{background:#00c853;font-weight:bold;cursor:pointer}
 .lista{font-size:14px;background:#001628;padding:10px;border-radius:8px}
 footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
 #adBtn{font-size:11px;padding:4px 8px;background:#001628;border-radius:6px}
-#adminPanel{display:none;background:#2b0000}
-#adminActions{display:none;background:#1a0000}
+#adminPanel{display:none;background:#2b0000;padding:15px;margin-top:10px;border-radius:10px}
+#adminActions{display:none;background:#1a0000;padding:15px;margin-top:10px;border-radius:10px}
 ul{padding-left:18px;text-align:left}
 </style>
 </head>
-
 <body>
 
 <header>🎟️ RIFA GANA</header>
 
 <div class="container">
 
+<!-- PREMIOS -->
 <div class="box">
 <h3>🏆 Premios</h3>
 <p>🥇 Viaje Sur de Chile Todo Pagado</p>
@@ -46,22 +46,26 @@ ul{padding-left:18px;text-align:left}
 <p><b>Valor número:</b> $600</p>
 </div>
 
+<!-- DATOS DEL COMPRADOR -->
 <div class="box">
 <h3>👤 Datos comprador</h3>
 <input id="nombre" placeholder="Nombre completo">
 <input id="telefono" placeholder="Teléfono">
 </div>
 
+<!-- MIS NUMEROS -->
 <div class="box">
 <div class="seccion-btn" onclick="toggleMis()">📋 Mis números</div>
 <div id="misNumeros" class="lista" style="display:none"></div>
 </div>
 
+<!-- NUMEROS -->
 <div class="box">
 <h3>🎯 Selecciona números</h3>
 <div id="secciones"></div>
 </div>
 
+<!-- RESUMEN -->
 <div class="box">
 <p><b>Seleccionados:</b> <span id="listaSel">Ninguno</span></p>
 <p><b>Total:</b> $<span id="total">0</span></p>
@@ -69,16 +73,18 @@ ul{padding-left:18px;text-align:left}
 <p id="msg"></p>
 </div>
 
+<!-- REGLAS -->
 <div class="box">
 <h3>📜 Reglas y Transparencia</h3>
 <ul>
 <li>Números vendidos se bloquean automáticamente.</li>
-<li>Lista pública visible.</li>
+<li>Lista pública visible en “Mis números”.</li>
 <li>Compras validadas por administrador.</li>
 <li>Sorteo público verificable.</li>
 </ul>
 </div>
 
+<!-- SORTEO Y RECOMPENSA -->
 <div class="box">
 <h3>🎥 Sorteo y Recompensa</h3>
 <ul>
@@ -92,9 +98,9 @@ ul{padding-left:18px;text-align:left}
 </div>
 
 <footer>
-
 <button id="adBtn" onclick="toggleAdmin()">ad</button>
 
+<!-- LOGIN ADMIN -->
 <div class="box" id="adminPanel">
 <h3>👑 Login Admin</h3>
 <input id="email" placeholder="Email">
@@ -103,27 +109,24 @@ ul{padding-left:18px;text-align:left}
 <p id="adminMsg"></p>
 </div>
 
+<!-- PANEL ADMIN -->
 <div class="box" id="adminActions">
 <h3>👑 Panel Admin</h3>
 
-<button onclick="logoutAdmin()" style="background:#ff5252">
-🚪 Cerrar sesión
-</button>
+<button onclick="logoutAdmin()" style="background:#ff5252">🚪 Cerrar sesión</button>
 
 <h3>➕ Registrar compra</h3>
-<input id="aNombre" placeholder="Nombre">
+<input id="aNombre" placeholder="Nombre comprador">
 <input id="aTelefono" placeholder="Teléfono">
 <input id="aNumeros" placeholder="Ej: 10,25,300">
 <button onclick="guardarCompra()">Guardar compra</button>
 </div>
 
 <p>© 2026 Rifa Gana</p>
-
 </footer>
 
 <script>
-
-// FIREBASE REAL
+// FIREBASE CONFIG
 firebase.initializeApp({
 apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
 authDomain: "rifagana-2712b.firebaseapp.com",
@@ -142,130 +145,139 @@ let seleccionados=[],vendidos=[],esAdmin=false;
 const vendidosRef=db.collection("vendidos");
 const comprasRef=db.collection("compras");
 
-// ADMIN
+// ===================== ADMIN =====================
 function toggleAdmin(){adminPanel.style.display=adminPanel.style.display==="block"?"none":"block";}
 
 function loginAdmin(){
-auth.signInWithEmailAndPassword(email.value,password.value)
-.then(()=>{adminMsg.textContent="Admin conectado";adminActions.style.display="block";esAdmin=true;})
-.catch(()=>adminMsg.textContent="Error login");
+  auth.signInWithEmailAndPassword(email.value,password.value)
+  .then(()=>{adminMsg.textContent="Admin conectado";adminActions.style.display="block";esAdmin=true;})
+  .catch(()=>adminMsg.textContent="Error login");
 }
 
 function logoutAdmin(){
-auth.signOut().then(()=>{
-esAdmin=false;
-adminActions.style.display="none";
-adminPanel.style.display="none";
-adminMsg.textContent="Sesión cerrada";
-});
+  auth.signOut().then(()=>{
+    esAdmin=false;
+    adminActions.style.display="none";
+    adminPanel.style.display="none";
+    adminMsg.textContent="Sesión cerrada";
+  });
 }
 
 auth.onAuthStateChanged(u=>{
-if(u){esAdmin=true;adminActions.style.display="block";}
+  if(u){
+    u.getIdTokenResult().then(t=>{
+      if(t.claims.admin){esAdmin=true;adminActions.style.display="block";}
+      else esAdmin=false;
+    });
+  }else esAdmin=false;
 });
 
-// MIS NUMEROS
+// ===================== MIS NUMEROS =====================
 function toggleMis(){misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";}
 
 comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
-misNumeros.innerHTML="";
-s.forEach(d=>{
-let c=d.data();
-let p=document.createElement("p");
-p.innerHTML=`🔢 ${c.numeros.join(", ")}<br>👤 ${c.nombre} - 📞 ${c.telefono}`;
-misNumeros.appendChild(p);
-});
+  misNumeros.innerHTML="";
+  s.forEach(d=>{
+    let c=d.data();
+    let p=document.createElement("p");
+    p.innerHTML=`🔢 ${c.numeros.join(", ")}<br>👤 ${c.nombre} - 📞 ${c.telefono}`;
+    misNumeros.appendChild(p);
+  });
 });
 
-// VENDIDOS
+// ===================== VENDIDOS =====================
 vendidosRef.onSnapshot(s=>{
-vendidos=s.docs.map(d=>parseInt(d.id));
-document.querySelectorAll(".numero").forEach(n=>{
-if(vendidos.includes(parseInt(n.textContent))) n.classList.add("vendido");
-});
+  vendidos=s.docs.map(d=>parseInt(d.id));
+  document.querySelectorAll(".numero").forEach(n=>{
+    if(vendidos.includes(parseInt(n.textContent))) n.classList.add("vendido");
+  });
 });
 
-// GUARDAR COMPRA ADMIN
+// ===================== GUARDAR COMPRA =====================
 function guardarCompra(){
-if(!esAdmin) return;
-let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim()));
+  if(!esAdmin) return;
+  let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim()));
+  if(nums.length>MAX){alert("Máximo 100 números"); return;}
+  
+  comprasRef.add({
+    nombre:aNombre.value,
+    telefono:aTelefono.value,
+    numeros:nums,
+    fecha:firebase.firestore.FieldValue.serverTimestamp()
+  });
 
-comprasRef.add({
-nombre:aNombre.value,
-telefono:aTelefono.value,
-numeros:nums,
-fecha:firebase.firestore.FieldValue.serverTimestamp()
-});
+  nums.forEach(n=>vendidosRef.doc(n.toString()).set({fecha:Date.now()}));
 
-nums.forEach(n=>vendidosRef.doc(n.toString()).set({fecha:Date.now()}));
-
-aNombre.value=aTelefono.value=aNumeros.value="";
+  aNombre.value=aTelefono.value=aNumeros.value="";
 }
 
-// NUMEROS
+// ===================== NUMEROS =====================
 const cont=document.getElementById("secciones");
 
 for(let i=1;i<=TOTAL;i+=BLOQUE){
-let fin=i+BLOQUE-1;
+  let fin=i+BLOQUE-1;
+  let btn=document.createElement("div");
+  btn.className="seccion-btn";
+  btn.textContent=`Números ${i}-${fin}`;
 
-let btn=document.createElement("div");
-btn.className="seccion-btn";
-btn.textContent=`Números ${i}-${fin}`;
+  let grid=document.createElement("div");
+  grid.className="numeros";
+  let cargado=false;
 
-let grid=document.createElement("div");
-grid.className="numeros";
+  btn.onclick=()=>{
+    grid.style.display=grid.style.display==="grid"?"none":"grid";
+    if(cargado) return;
+    cargado=true;
 
-let cargado=false;
+    for(let n=i;n<=fin;n++){
+      let d=document.createElement("div");
+      d.className="numero";
+      d.textContent=n;
 
-btn.onclick=()=>{
-grid.style.display=grid.style.display==="grid"?"none":"grid";
-if(cargado) return;
-cargado=true;
+      d.onclick=()=>{
+        if(vendidos.includes(n)) return;
+        if(!seleccionados.includes(n)&&seleccionados.length>=MAX) return;
 
-for(let n=i;n<=fin;n++){
-let d=document.createElement("div");
-d.className="numero";
-d.textContent=n;
+        d.classList.toggle("sel");
+        if(seleccionados.includes(n)){
+          seleccionados=seleccionados.filter(x=>x!==n);
+        }else seleccionados.push(n);
 
-d.onclick=()=>{
-if(vendidos.includes(n)) return;
-if(!seleccionados.includes(n)&&seleccionados.length>=MAX) return;
+        listaSel.textContent=seleccionados.join(", ");
+        total.textContent=seleccionados.length*PRECIO;
+      };
 
-d.classList.toggle("sel");
+      grid.appendChild(d);
+    }
+  };
 
-if(seleccionados.includes(n)){
-seleccionados=seleccionados.filter(x=>x!==n);
-}else seleccionados.push(n);
-
-listaSel.textContent=seleccionados.join(", ");
-total.textContent=seleccionados.length*PRECIO;
-};
-
-grid.appendChild(d);
-}
-};
-
-cont.appendChild(btn);
-cont.appendChild(grid);
+  cont.appendChild(btn);
+  cont.appendChild(grid);
 }
 
-// WHATSAPP
+// ===================== WHATSAPP =====================
 function enviarWA(){
-if(!nombre.value||!telefono.value||seleccionados.length===0){
-msg.textContent="Completa datos";
-return;
-}
+  if(!nombre.value||!telefono.value||seleccionados.length===0){
+    msg.textContent="Completa todos los datos";
+    return;
+  }
 
-let t=`RIFA GANA
+  // Validaciones front anti hack
+  if(telefono.value.length < 8){
+    msg.textContent="Teléfono inválido"; return;
+  }
+  if(seleccionados.some(n=>n<1||n>TOTAL)){
+    msg.textContent="Número inválido"; return;
+  }
+
+  let t=`RIFA GANA
 Nombre: ${nombre.value}
 Teléfono: ${telefono.value}
 Números: ${seleccionados.join(", ")}
 Total: $${seleccionados.length*PRECIO}`;
 
-window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
+  window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
-
 </script>
-
 </body>
   </html>
