@@ -18,11 +18,13 @@ header{background:#001628;padding:20px;text-align:center;font-size:24px;font-wei
 h2,h3{text-align:center}
 input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none}
 button{background:#00c853;font-weight:bold;cursor:pointer}
+button:hover{opacity:.85}
 .seccion-btn{background:#001628;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer;font-weight:bold;text-align:center}
 .numeros{display:none;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:6px;margin-top:10px}
-.numero{background:#1c2b5a;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;text-align:center}
+.numero{background:#1c2b5a;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;text-align:center;transition:0.2s}
+.numero:hover:not(.vendido):not(.sel){background:#3339ff}
 .numero.sel{background:#00c853;color:black}
-.numero.vendido{background:#b71c1c;cursor:not-allowed}
+.numero.vendido{background:#b71c1c;cursor:not-allowed;opacity:.6}
 .lista{font-size:14px;background:#001628;padding:10px;border-radius:8px}
 footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
 #adBtn{font-size:11px;padding:4px 8px;background:#001628;border-radius:6px}
@@ -31,11 +33,9 @@ footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
 ul{padding-left:18px;text-align:left}
 </style>
 </head>
-
 <body>
 
 <header>🎟️ RIFA GANA</header>
-
 <div class="container">
 
 <!-- PREMIOS -->
@@ -99,7 +99,6 @@ ul{padding-left:18px;text-align:left}
 </div>
 
 <footer>
-
 <button id="adBtn" onclick="toggleAdmin()">ad</button>
 
 <!-- PANEL LOGIN ADMIN -->
@@ -127,7 +126,6 @@ ul{padding-left:18px;text-align:left}
 </footer>
 
 <script>
-
 // CONFIG FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
@@ -159,6 +157,7 @@ function loginAdmin(){
     .then(u=>{
       adminMsg.textContent="Administrador conectado";
       esAdmin=true;
+      adminPanel.style.display="none";
       adminActions.style.display="block";
     })
     .catch(e=>adminMsg.textContent="Error login: "+e.message);
@@ -174,7 +173,14 @@ function logoutAdmin(){
 }
 
 auth.onAuthStateChanged(u=>{
-  if(u) esAdmin=true;
+  if(u){
+    esAdmin=true;
+    adminPanel.style.display="none";
+    adminActions.style.display="block";
+  } else {
+    esAdmin=false;
+    adminActions.style.display="none";
+  }
 });
 
 // MIS NUMEROS
@@ -195,11 +201,13 @@ comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
 vendidosRef.onSnapshot(s=>{
   vendidos=s.docs.map(d=>parseInt(d.id));
   document.querySelectorAll(".numero").forEach(n=>{
-    if(vendidos.includes(parseInt(n.textContent))) n.classList.add("vendido");
+    let val=parseInt(n.textContent);
+    if(vendidos.includes(val)) n.classList.add("vendido");
+    else n.classList.remove("vendido");
   });
 });
 
-// GUARDAR COMPRA ADMIN
+// GUARDAR COMPRA ADMIN CON BATCH
 function guardarCompra(){
   if(!esAdmin){
     alert("Debes estar logueado como admin");
@@ -209,24 +217,29 @@ function guardarCompra(){
     alert("Completa todos los campos");
     return;
   }
+
   let nums = aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n));
   if(nums.length===0){
     alert("Ingresa al menos un número válido");
     return;
   }
 
-  // Guardar en Firestore
-  comprasRef.add({
-    nombre: aNombre.value,
-    telefono: aTelefono.value,
-    numeros: nums,
-    fecha: firebase.firestore.FieldValue.serverTimestamp()
+  let batch = db.batch();
+  nums.forEach(n=>{
+    let docRef = vendidosRef.doc(n.toString());
+    batch.set(docRef, {fecha: Date.now()});
   });
 
-  nums.forEach(n=>vendidosRef.doc(n.toString()).set({fecha:Date.now()}));
-
-  aNombre.value = aTelefono.value = aNumeros.value = "";
-  alert("Compra registrada y números bloqueados");
+  batch.commit().then(()=>{
+    comprasRef.add({
+      nombre: aNombre.value,
+      telefono: aTelefono.value,
+      numeros: nums,
+      fecha: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    aNombre.value = aTelefono.value = aNumeros.value = "";
+    alert("Compra registrada y números bloqueados");
+  }).catch(err=>alert("Error: "+err.message));
 }
 
 // NUMEROS
@@ -266,18 +279,19 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
 
 // WHATSAPP
 function enviarWA(){
-  if(!nombre.value || !telefono.value || seleccionados.length===0){
+  let nom=nombre.value.trim(), tel=telefono.value.trim();
+  if(!nom || !tel || seleccionados.length===0){
     msg.textContent="Completa datos y selecciona números";
     return;
   }
   let t=`RIFA GANA
-Nombre: ${nombre.value}
-Teléfono: ${telefono.value}
+Nombre: ${nom}
+Teléfono: ${tel}
 Números: ${seleccionados.join(", ")}
 Total: $${seleccionados.length*PRECIO}`;
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
-
 </script>
+
 </body>
   </html>
