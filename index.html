@@ -41,26 +41,13 @@ ul{padding-left:18px;text-align:left}
 <!-- PREMIOS -->
 <div class="box">
 <h3>🏆 Premios</h3>
-<p>🥇 Viaje al sur de Chile Todo Pagado (2 personas + vuelos ida y vuelta + alojamiento + efectivo $180.000)</p>
-<p>🥈 Viaje al norte de Chile Todo Pagado (2 personas + vuelos ida y vuelta + alojamiento + efectivo $180.000)</p>
-<p>🥉 Premios en efectivo:</p>
-<ul>
-<li>1 $700.000</li>
-<li>2 $500.000</li>
-<li>3 $300.000</li>
-<li>4 $150.000</li>
-<li>5 $100.000</li>
-<li>6 al 10 $50.000</li>
-<li>11 al 30 $30.000</li>
-<li>31 al 50 $20.000</li>
-<li>51 al 100 $10.000</li>
-<li>101 al 500 $2.000</li>
-</ul>
+<p>🥇 Viaje Sur de Chile Todo Pagado</p>
+<p>🥈 Viaje Norte de Chile Todo Pagado</p>
+<p>🥉 Premios en efectivo</p>
 <p><b>Valor número:</b> $600</p>
-<p><b>Fecha de Sorteo:</b> 20 de Febrero 2026</p>
 </div>
 
-<!-- DATOS DEL COMPRADOR -->
+<!-- DATOS -->
 <div class="box">
 <h3>👤 Datos comprador</h3>
 <input id="nombre" placeholder="Nombre completo">
@@ -92,20 +79,9 @@ ul{padding-left:18px;text-align:left}
 <h3>📜 Reglas y Transparencia</h3>
 <ul>
 <li>Números vendidos se bloquean automáticamente.</li>
-<li>Lista pública visible.</li>
+<li>Lista pública con privacidad.</li>
 <li>Compras validadas por administrador.</li>
 <li>Sorteo público verificable.</li>
-</ul>
-</div>
-
-<!-- SORTEO -->
-<div class="box">
-<h3>🎥 Sorteo y Recompensa</h3>
-<ul>
-<li>Sorteo según fecha oficial.</li>
-<li>Live Facebook e Instagram.</li>
-<li>Primeros 10 premios llamada en vivo.</li>
-<li>Ganadores tienen 7 días hábiles para cobrar.</li>
 </ul>
 </div>
 
@@ -114,7 +90,7 @@ ul{padding-left:18px;text-align:left}
 <footer>
 <button id="adBtn" onclick="toggleAdmin()">ad</button>
 
-<!-- PANEL LOGIN ADMIN -->
+<!-- ADMIN LOGIN -->
 <div class="box" id="adminPanel">
 <h3>👑 Login Admin</h3>
 <input id="email" placeholder="Email">
@@ -123,10 +99,10 @@ ul{padding-left:18px;text-align:left}
 <p id="adminMsg"></p>
 </div>
 
-<!-- ACCIONES ADMIN -->
+<!-- ADMIN ACTIONS -->
 <div class="box" id="adminActions">
 <h3>👑 Panel Admin</h3>
-<button onclick="logoutAdmin()" style="background:#ff5252">🚪 Cerrar sesión</button>
+<button onclick="logoutAdmin()" style="background:#ff5252">Cerrar sesión</button>
 
 <h3>➕ Registrar compra</h3>
 <input id="aNombre" placeholder="Nombre">
@@ -139,7 +115,7 @@ ul{padding-left:18px;text-align:left}
 </footer>
 
 <script>
-// CONFIG FIREBASE
+// FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
   authDomain: "rifagana-2712b.firebaseapp.com",
@@ -149,56 +125,38 @@ firebase.initializeApp({
   appId: "1:701255546159:web:3456ed6bc98234e3575dda"
 });
 
-const db = firebase.firestore();
-const auth = firebase.auth();
-
+const db=firebase.firestore(),auth=firebase.auth();
 const TOTAL=15000,BLOQUE=1500,PRECIO=600,MAX=100,WA="56945006619";
 let seleccionados=[],vendidos=[],esAdmin=false;
 
-const vendidosRef = db.collection("vendidos");
-const comprasRef = db.collection("compras");
+const vendidosRef=db.collection("vendidos");
+const comprasRef=db.collection("compras");
 
 // ADMIN
 function toggleAdmin(){adminPanel.style.display=adminPanel.style.display==="block"?"none":"block";}
-
 function loginAdmin(){
-  if(!email.value || !password.value){
-    adminMsg.textContent="Completa email y password"; return;
-  }
   auth.signInWithEmailAndPassword(email.value,password.value)
-    .then(u=>{
-      adminMsg.textContent="Administrador conectado";
-      esAdmin=true;
-      adminPanel.style.display="none";
-      adminActions.style.display="block";
-    })
-    .catch(e=>adminMsg.textContent="Error login: "+e.message);
+  .then(()=>{esAdmin=true;adminPanel.style.display="none";adminActions.style.display="block";})
+  .catch(e=>adminMsg.textContent=e.message);
 }
-
 function logoutAdmin(){
-  auth.signOut().then(()=>{
-    esAdmin=false;
-    adminActions.style.display="none";
-    adminPanel.style.display="none";
-    adminMsg.textContent="Sesión cerrada";
-  });
+  auth.signOut().then(()=>{esAdmin=false;adminActions.style.display="none";});
 }
-
 auth.onAuthStateChanged(u=>{
-  if(u){ esAdmin=true; adminPanel.style.display="none"; adminActions.style.display="block"; }
-  else { esAdmin=false; adminActions.style.display="none"; }
+  if(u){esAdmin=true;adminActions.style.display="block";}
 });
 
-// MIS NUMEROS
-function toggleMis(){misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";}
-
+// MIS NUMEROS (OCULTOS)
+function toggleMis(){
+  misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";
+}
 comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
   misNumeros.innerHTML="";
   s.forEach(d=>{
     const c=d.data();
-    if(!c.nombre || !c.telefono || !c.numeros) return;
+    const ocultos=c.numeros.map(n=>"XXXX"+n.toString().slice(-2));
     const p=document.createElement("p");
-    p.innerHTML=`🔢 <b>${c.numeros.join(", ")}</b><br>👤 ${c.nombre} - 📞 ${c.telefono}`;
+    p.innerHTML=`🔢 <b>${ocultos.join(", ")}</b><br>👤 ${c.nombre}`;
     misNumeros.appendChild(p);
   });
 });
@@ -207,49 +165,19 @@ comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
 vendidosRef.onSnapshot(s=>{
   vendidos=s.docs.map(d=>parseInt(d.id));
   document.querySelectorAll(".numero").forEach(n=>{
-    let val=parseInt(n.textContent);
-    if(vendidos.includes(val)) n.classList.add("vendido");
-    else n.classList.remove("vendido");
+    if(vendidos.includes(parseInt(n.textContent))) n.classList.add("vendido");
   });
 });
 
-// GUARDAR COMPRA ADMIN CON VALIDACIÓN Y BATCH
+// GUARDAR COMPRA
 function guardarCompra(){
-  if(!esAdmin){ alert("Debes estar logueado como admin"); return; }
-  if(!aNombre.value || !aTelefono.value || !aNumeros.value){
-    alert("Completa todos los campos"); return;
-  }
-
-  let nums = aNumeros.value.split(",")
-              .map(n => parseInt(n.trim()))
-              .filter(n => !isNaN(n) && n >= 1 && n <= TOTAL);
-
-  if(nums.length === 0){ alert("Ingresa al menos un número válido"); return; }
-
-  // Verificar duplicados
-  let duplicates = nums.filter(n => vendidos.includes(n));
-  if(duplicates.length > 0){
-    alert("Los siguientes números ya están vendidos: " + duplicates.join(", "));
-    return;
-  }
-
-  // Batch write
-  let batch = db.batch();
-  nums.forEach(n=>{
-    let docRef = vendidosRef.doc(n.toString());
-    batch.set(docRef, {fecha: Date.now()});
-  });
-
+  let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n));
+  let batch=db.batch();
+  nums.forEach(n=>batch.set(vendidosRef.doc(n.toString()),{fecha:Date.now()}));
   batch.commit().then(()=>{
-    comprasRef.add({
-      nombre: aNombre.value,
-      telefono: aTelefono.value,
-      numeros: nums,
-      fecha: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    aNombre.value = aTelefono.value = aNumeros.value = "";
-    alert("Compra registrada y números bloqueados");
-  }).catch(err=>alert("Error: "+err.message));
+    comprasRef.add({nombre:aNombre.value,telefono:aTelefono.value,numeros:nums,fecha:firebase.firestore.FieldValue.serverTimestamp()});
+    alert("Compra registrada");
+  });
 }
 
 // NUMEROS
@@ -262,7 +190,6 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
   let grid=document.createElement("div");
   grid.className="numeros";
   let cargado=false;
-
   btn.onclick=()=>{
     grid.style.display=grid.style.display==="grid"?"none":"grid";
     if(cargado) return;
@@ -272,34 +199,30 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
       d.className="numero";
       d.textContent=n;
       d.onclick=()=>{
-        if(vendidos.includes(n)) return;
-        if(!seleccionados.includes(n) && seleccionados.length>=MAX) return;
+        if(vendidos.includes(n))return;
         d.classList.toggle("sel");
-        if(seleccionados.includes(n)) seleccionados = seleccionados.filter(x=>x!==n);
-        else seleccionados.push(n);
+        seleccionados.includes(n)?seleccionados=seleccionados.filter(x=>x!==n):seleccionados.push(n);
         listaSel.textContent=seleccionados.join(", ");
         total.textContent=seleccionados.length*PRECIO;
       };
       grid.appendChild(d);
     }
   };
-  cont.appendChild(btn);
-  cont.appendChild(grid);
+  cont.appendChild(btn);cont.appendChild(grid);
 }
 
 // WHATSAPP
 function enviarWA(){
-  let nom=nombre.value.trim(), tel=telefono.value.trim();
-  if(!nom || !tel || seleccionados.length===0){
-    msg.textContent="Completa datos y selecciona números"; return;
+  if(!nombre.value||!telefono.value||!seleccionados.length){
+    msg.textContent="Completa datos y selecciona números";return;
   }
   let t=`RIFA GANA
-Nombre: ${nom}
-Teléfono: ${tel}
+Nombre: ${nombre.value}
+Teléfono: ${telefono.value}
 Números: ${seleccionados.join(", ")}
 Total: $${seleccionados.length*PRECIO}`;
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
 </script>
 </body>
-  </html>
+</html>
