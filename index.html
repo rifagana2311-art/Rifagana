@@ -15,36 +15,34 @@ body{margin:0;font-family:Arial;background:#0a0f1f;color:white}
 header{background:#001628;padding:20px;text-align:center;font-size:24px;font-weight:bold}
 .container{max-width:1400px;margin:auto;padding:20px}
 .box{background:#111a3a;padding:15px;border-radius:10px;margin-bottom:20px}
-h2,h3{text-align:center}
-input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none}
+h3{text-align:center}
+input,button,textarea{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none}
+textarea{resize:vertical}
 button{background:#00c853;font-weight:bold;cursor:pointer}
 button:hover{opacity:.85}
 .seccion-btn{background:#001628;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer;font-weight:bold;text-align:center}
 .numeros{display:none;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:6px;margin-top:10px}
-.numero{background:#1c2b5a;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;text-align:center;transition:0.2s}
+.numero{background:#1c2b5a;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;text-align:center}
 .numero:hover:not(.vendido):not(.sel){background:#3339ff}
 .numero.sel{background:#00c853;color:black}
 .numero.vendido{background:#b71c1c;cursor:not-allowed;opacity:.6}
 .lista{font-size:14px;background:#001628;padding:10px;border-radius:8px}
 footer{text-align:center;font-size:12px;opacity:.85;margin:30px}
 #adBtn{font-size:11px;padding:4px 8px;background:#001628;border-radius:6px}
-#adminPanel{display:none;background:#2b0000}
-#adminActions{display:none;background:#1a0000}
-ul{padding-left:18px;text-align:left}
+#adminPanel,#adminActions{display:none}
+.msg{font-size:13px;color:#ffb74d;text-align:center}
 </style>
 </head>
-<body>
 
+<body>
 <header>🎟️ RIFA GANA</header>
+
 <div class="container">
 
 <!-- PREMIOS -->
 <div class="box">
 <h3>🏆 Premios</h3>
-<p>🥇 Viaje Sur de Chile Todo Pagado</p>
-<p>🥈 Viaje Norte de Chile Todo Pagado</p>
-<p>🥉 Premios en efectivo</p>
-<p><b>Valor número:</b> $600</p>
+<div id="premiosContenido">Cargando premios...</div>
 </div>
 
 <!-- DATOS -->
@@ -71,18 +69,14 @@ ul{padding-left:18px;text-align:left}
 <p><b>Seleccionados:</b> <span id="listaSel">Ninguno</span></p>
 <p><b>Total:</b> $<span id="total">0</span></p>
 <button onclick="enviarWA()">Enviar a WhatsApp</button>
-<p id="msg"></p>
+<p class="msg" id="msg"></p>
+<p class="msg">⚠️ Enviar WhatsApp no reserva números. Se validan solo por el administrador.</p>
 </div>
 
 <!-- REGLAS -->
 <div class="box">
 <h3>📜 Reglas y Transparencia</h3>
-<ul>
-<li>Números vendidos se bloquean automáticamente.</li>
-<li>Lista pública con privacidad.</li>
-<li>Compras validadas por administrador.</li>
-<li>Sorteo público verificable.</li>
-</ul>
+<div id="reglasContenido">Cargando reglas...</div>
 </div>
 
 </div>
@@ -96,7 +90,7 @@ ul{padding-left:18px;text-align:left}
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 <button onclick="loginAdmin()">Ingresar</button>
-<p id="adminMsg"></p>
+<p class="msg" id="adminMsg"></p>
 </div>
 
 <!-- ADMIN ACTIONS -->
@@ -109,51 +103,87 @@ ul{padding-left:18px;text-align:left}
 <input id="aTelefono" placeholder="Teléfono">
 <input id="aNumeros" placeholder="Ej: 10,25,300">
 <button onclick="guardarCompra()">Guardar compra</button>
+
+<hr>
+
+<h3>✏️ Editar premios</h3>
+<textarea id="premiosEdit" placeholder="HTML permitido"></textarea>
+<button onclick="guardarPremios()">Guardar premios</button>
+<p class="msg" id="premiosMsg"></p>
+
+<hr>
+
+<h3>✏️ Editar reglas</h3>
+<textarea id="reglasEdit" placeholder="HTML permitido"></textarea>
+<button onclick="guardarReglas()">Guardar reglas</button>
+<p class="msg" id="reglasMsg"></p>
+
 </div>
 
 <p>© 2026 Rifa Gana</p>
 </footer>
 
 <script>
-// FIREBASE
+// 🔥 FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyCTetSQcPUTGixBDCu1hg7GltU8Xc4GfzU",
   authDomain: "rifagana-2712b.firebaseapp.com",
-  projectId: "rifagana-2712b",
-  storageBucket: "rifagana-2712b.firebasestorage.app",
-  messagingSenderId: "701255546159",
-  appId: "1:701255546159:web:3456ed6bc98234e3575dda"
+  projectId: "rifagana-2712b"
 });
 
-const db=firebase.firestore(),auth=firebase.auth();
+const db=firebase.firestore(), auth=firebase.auth();
 const TOTAL=15000,BLOQUE=1500,PRECIO=600,MAX=100,WA="56945006619";
 let seleccionados=[],vendidos=[],esAdmin=false;
 
 const vendidosRef=db.collection("vendidos");
 const comprasRef=db.collection("compras");
+const premiosRef=db.collection("config").doc("premios");
+const reglasRef=db.collection("config").doc("reglas");
 
 // ADMIN
 function toggleAdmin(){adminPanel.style.display=adminPanel.style.display==="block"?"none":"block";}
 function loginAdmin(){
+  if(!email.value||!password.value){adminMsg.textContent="Completa los datos";return;}
   auth.signInWithEmailAndPassword(email.value,password.value)
-  .then(()=>{esAdmin=true;adminPanel.style.display="none";adminActions.style.display="block";})
-  .catch(e=>adminMsg.textContent=e.message);
+    .then(()=>{esAdmin=true;adminPanel.style.display="none";adminActions.style.display="block";})
+    .catch(e=>adminMsg.textContent=e.message);
 }
-function logoutAdmin(){
-  auth.signOut().then(()=>{esAdmin=false;adminActions.style.display="none";});
-}
-auth.onAuthStateChanged(u=>{
-  if(u){esAdmin=true;adminActions.style.display="block";}
+function logoutAdmin(){auth.signOut().then(()=>adminActions.style.display="none");}
+auth.onAuthStateChanged(u=>{if(u){esAdmin=true;adminActions.style.display="block";}});
+
+// PREMIOS
+premiosRef.onSnapshot(d=>{
+  if(d.exists){
+    premiosContenido.innerHTML=d.data().descripcion;
+    if(esAdmin) premiosEdit.value=d.data().descripcion;
+  }
 });
+function guardarPremios(){
+  if(!esAdmin)return;
+  premiosRef.set({descripcion:premiosEdit.value});
+  premiosMsg.textContent="Premios actualizados ✔️";
+}
+
+// REGLAS
+reglasRef.onSnapshot(d=>{
+  if(d.exists){
+    reglasContenido.innerHTML=d.data().descripcion;
+    if(esAdmin) reglasEdit.value=d.data().descripcion;
+  }
+});
+function guardarReglas(){
+  if(!esAdmin)return;
+  reglasRef.set({descripcion:reglasEdit.value});
+  reglasMsg.textContent="Reglas actualizadas ✔️";
+}
 
 // MIS NUMEROS (OCULTOS)
-function toggleMis(){
-  misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";
-}
+function toggleMis(){misNumeros.style.display=misNumeros.style.display==="block"?"none":"block";}
 comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
   misNumeros.innerHTML="";
   s.forEach(d=>{
     const c=d.data();
+    if(!c.numeros)return;
     const ocultos=c.numeros.map(n=>"XXXX"+n.toString().slice(-2));
     const p=document.createElement("p");
     p.innerHTML=`🔢 <b>${ocultos.join(", ")}</b><br>👤 ${c.nombre}`;
@@ -165,13 +195,16 @@ comprasRef.orderBy("fecha","desc").onSnapshot(s=>{
 vendidosRef.onSnapshot(s=>{
   vendidos=s.docs.map(d=>parseInt(d.id));
   document.querySelectorAll(".numero").forEach(n=>{
-    if(vendidos.includes(parseInt(n.textContent))) n.classList.add("vendido");
+    n.classList.toggle("vendido",vendidos.includes(parseInt(n.textContent)));
   });
 });
 
 // GUARDAR COMPRA
 function guardarCompra(){
-  let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n));
+  if(!esAdmin)return alert("No autorizado");
+  let nums=aNumeros.value.split(",").map(n=>parseInt(n.trim())).filter(n=>!isNaN(n)&&n>=1&&n<=TOTAL);
+  let dup=nums.filter(n=>vendidos.includes(n));
+  if(dup.length)return alert("Ya vendidos: "+dup.join(","));
   let batch=db.batch();
   nums.forEach(n=>batch.set(vendidosRef.doc(n.toString()),{fecha:Date.now()}));
   batch.commit().then(()=>{
@@ -192,17 +225,16 @@ for(let i=1;i<=TOTAL;i+=BLOQUE){
   let cargado=false;
   btn.onclick=()=>{
     grid.style.display=grid.style.display==="grid"?"none":"grid";
-    if(cargado) return;
-    cargado=true;
+    if(cargado)return;cargado=true;
     for(let n=i;n<=fin;n++){
       let d=document.createElement("div");
-      d.className="numero";
-      d.textContent=n;
+      d.className="numero";d.textContent=n;
       d.onclick=()=>{
         if(vendidos.includes(n))return;
+        if(!seleccionados.includes(n)&&seleccionados.length>=MAX){msg.textContent="Máximo 100 números";return;}
         d.classList.toggle("sel");
         seleccionados.includes(n)?seleccionados=seleccionados.filter(x=>x!==n):seleccionados.push(n);
-        listaSel.textContent=seleccionados.join(", ");
+        listaSel.textContent=seleccionados.join(", ")||"Ninguno";
         total.textContent=seleccionados.length*PRECIO;
       };
       grid.appendChild(d);
@@ -216,13 +248,9 @@ function enviarWA(){
   if(!nombre.value||!telefono.value||!seleccionados.length){
     msg.textContent="Completa datos y selecciona números";return;
   }
-  let t=`RIFA GANA
-Nombre: ${nombre.value}
-Teléfono: ${telefono.value}
-Números: ${seleccionados.join(", ")}
-Total: $${seleccionados.length*PRECIO}`;
+  let t=`RIFA GANA\nNombre: ${nombre.value}\nTeléfono: ${telefono.value}\nNúmeros: ${seleccionados.join(", ")}\nTotal: $${seleccionados.length*PRECIO}`;
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(t)}`);
 }
 </script>
 </body>
-</html>
+  </html>
